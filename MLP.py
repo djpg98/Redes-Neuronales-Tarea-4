@@ -207,9 +207,12 @@ class MLP:
 
         next_layer_input = input_vector
 
-        for layer in self.layers:
+        for layer_id in range(len(self.layers)):
 
-            next_layer_input = layer.output(next_layer_input)
+            if layer_id != self.depth - 1:
+                next_layer_input = np.concatenate((np.ones(1), self.layers[layer_id].output(next_layer_input)))
+            else:
+                next_layer_input = self.layers[layer_id].output(next_layer_input)
 
         return next_layer_input
 
@@ -218,18 +221,18 @@ class MLP:
         neuron_input = self.layers[layer_id].last_input
         
         if layer_id == (self.depth - 1):
-            self.layers[layer_id][neuron_id].localGradient = self.error_vector[neuron_id] * self.layers[layer_id][neuron_id].first_derivative_output(neuron_input)
+            self.layers[layer_id].neurons[neuron_id].localGradient = self.error_vector[neuron_id] * self.layers[layer_id].neurons[neuron_id].first_derivative_output(neuron_input)
         else:
             sum_next_layer = 0
             next_layer = layer_id + 1
-            for i in range(self.layers[next_layer]):
-                sum_next_layer += self.layers[next_layer][i].localGradient * self.layers[next_layer][i].weights[neuron_id]
+            for i in range(len(self.layers[next_layer].neurons)):
+                sum_next_layer += self.layers[next_layer].neurons[i].localGradient * self.layers[next_layer].neurons[i].weights[neuron_id]
             
-            self.layers[layer_id][neuron_id].localGradient = self.layers[layer_id][neuron_id].first_derivative_output(self.layers[layer_id].last_input) * sum_next_layer
+            self.layers[layer_id].neurons[neuron_id].localGradient = self.layers[layer_id].neurons[neuron_id].first_derivative_output(self.layers[layer_id].last_input) * sum_next_layer
 
     def getLocalGradient(self, layer_id, neuron_id):
 
-        return self.layers[layer_id][neuron_id].localGradient
+        return self.layers[layer_id].neurons[neuron_id].localGradient
 
     #Do not forget to set the error vector in training before that
     def backpropagation(self, layer_id):
@@ -241,9 +244,9 @@ class MLP:
             self.setLocalGradient(layer_id, neuron_id)
             local_gradient = self.getLocalGradient(layer_id, neuron_id)
 
-            for index in range(self.layers[layer_id][neuron_id].weights):
+            for index in range(len(self.layers[layer_id].neurons[neuron_id].weights)):
 
-                self.layers[layer_id][neuron_id].weights[index] += self.learning_rate * local_gradient * layer_inputs[index]
+                self.layers[layer_id].neurons[neuron_id].weights[index] += self.learning_rate * local_gradient * layer_inputs[index]
 
         if layer_id != 0:
             self.backpropagation(layer_id - 1)
@@ -251,7 +254,7 @@ class MLP:
     def train_network(self, dataset, epochs, learning_rate, verbose=False):
 
         dataset.add_bias_term()
-        assert(dataset.feature_vector_length() == len(self.neurons[0].weights))
+        assert(dataset.feature_vector_length() == len(self.layers[0].neurons[0].weights))
         self.learning_rate = learning_rate
 
         #labels_header = ",".join(["prec. label " + str(key) for key in dataset.get_labels()])       
@@ -299,7 +302,7 @@ class MLP:
     def eval(self, dataset):
 
         dataset.add_bias_term()
-        assert(dataset.feature_vector_length() == len(self.neurons[0].weights))
+        assert(dataset.feature_vector_length() == len(self.layers[0].neurons[0].weights))
 
 
         #labels_header = ",".join(["prec. label " + str(key) for key in dataset.get_labels()])       

@@ -4,8 +4,8 @@ from ActivationFunction import Sigmoid
 
 import sys
 
-hidden_layer_dimension = int(sys.args[1])
-output_layer_dimension = int(sys.args[2])
+hidden_layer_dimension = int(sys.argv[1])
+output_layer_dimension = int(sys.argv[2])
 
 sigmoid = Sigmoid()
 #Hidden Layer
