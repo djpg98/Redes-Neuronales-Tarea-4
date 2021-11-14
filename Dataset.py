@@ -182,8 +182,8 @@ class MultiClassDataset(DatasetMixin):
             yield key
 
     def get_label_vector(self,label):
-        vector = [-1 for i in range(len(self.label_dictionary))]
-        vector[self.get_label_index(label)] = 1
+        vector = [0.1 for i in range(len(self.label_dictionary))]
+        vector[self.get_label_index(label)] = 0.9
         return np.array(vector)
 
     """ Altera aleatoriamente el orden de los índices en index_list,

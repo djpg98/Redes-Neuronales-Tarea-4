@@ -296,3 +296,31 @@ class MLP:
             else:
                 break
 
+    def eval(self, dataset):
+
+        dataset.add_bias_term()
+        assert(dataset.feature_vector_length() == len(self.neurons[0].weights))
+
+
+        #labels_header = ",".join(["prec. label " + str(key) for key in dataset.get_labels()])       
+        print("Test information\n")
+        #print(f'epoch, accuracy, {labels_header}')
+        print('MSE')
+
+        sum_mse = 0 #Aquí se va acumulando el error para cada muestra
+
+        for features, expected_value in dataset: #Se itera sobre las muestras en el dataset
+
+            output_value = self.output(features) #Se produce el output dados los features (Utilizando la función lineal)
+
+            expected_vector = dataset.get_label_vector(expected_value)
+
+            error = sample_error(expected_vector, output_value) #Se calcula el error para la muestra
+
+            sum_mse += error #Actualizar error total
+
+        mse = sum_mse / dataset.size() #Calcular error promedio
+
+        print(f'{mse}')
+
+
