@@ -15,6 +15,9 @@ class DatasetMixin:
 
             self.features[i] = np.concatenate((np.ones(1), self.features[i]))
 
+        self.features = np.array(self.features)
+        self.values = np.array(self.values)
+
     """ Devuelve la cantidad de elementos en el dataset """
     def size(self):
 

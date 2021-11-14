@@ -1,5 +1,5 @@
 from Perceptron import Perceptron
-from metrics import precision, accuracy
+from metrics import precision, accuracy, sample_error
 import numpy as np
 
 """La clase Layer representa una capa de perceptrones. Esta muy sencilla implmentación asume
@@ -21,9 +21,11 @@ class Layer:
         if perceptron_list == []:
             self.dimension = dimension
             self.neurons = [Perceptron(input_dimension, activation_function) for i in range(dimension)]
+            self.last_input = np.zeros(input_dimension + 1)
         else:
             self.dimension = len(perceptron_list)
             self.neurons = perceptron_list
+            self.last_input = np.zeros(len(self.neurons[0].weights))
 
     """ Aplica la función de activación a todos los perceptrones de la capa dado un dato y devuelve
         un vector (Representado con una lista) que contiene los resultados de cada perceptron
@@ -32,6 +34,8 @@ class Layer:
     
     """
     def output(self, input_vector):
+
+        self.last_input = input_vector
 
         return np.array([perceptron.output(input_vector) for perceptron in self.neurons])
 
@@ -189,6 +193,8 @@ class MLP:
 
         self.layers = layer_list
         self.depth = len(layer_list)
+        self.error_vector = np.zeros(self.layers[self.depth - 1].dimension)
+        self.learning_rate = 0
 
     """ Genera el output del MLP. Funciona de la siguiente manera: Se itera por las capas de la red,
         en la primera iteración se recibe directamente el dato a clasificar, luego el output de esa 
@@ -206,4 +212,87 @@ class MLP:
             next_layer_input = layer.output(next_layer_input)
 
         return next_layer_input
+
+    def setLocalGradient(self, layer_id, neuron_id):
+
+        neuron_input = self.layers[layer_id].last_input
+        
+        if layer_id == (self.depth - 1):
+            self.layers[layer_id][neuron_id].localGradient = self.error_vector[neuron_id] * self.layers[layer_id][neuron_id].first_derivative_output(neuron_input)
+        else:
+            sum_next_layer = 0
+            next_layer = layer_id + 1
+            for i in range(self.layers[next_layer]):
+                sum_next_layer += self.layers[next_layer][i].localGradient * self.layers[next_layer][i].weights[neuron_id]
+            
+            self.layers[layer_id][neuron_id].localGradient = self.layers[layer_id][neuron_id].first_derivative_output(self.layers[layer_id].last_input) * sum_next_layer
+
+    def getLocalGradient(self, layer_id, neuron_id):
+
+        return self.layers[layer_id][neuron_id].localGradient
+
+    #Do not forget to set the error vector in training before that
+    def backpropagation(self, layer_id):
+
+        layer_inputs = self.layers[layer_id].last_input
+
+        for neuron_id in range(self.layers[layer_id].dimension):
+
+            self.setLocalGradient(layer_id, neuron_id)
+            local_gradient = self.getLocalGradient(layer_id, neuron_id)
+
+            for index in range(self.layers[layer_id][neuron_id].weights):
+
+                self.layers[layer_id][neuron_id].weights[index] += self.learning_rate * local_gradient * layer_inputs[index]
+
+        if layer_id != 0:
+            self.backpropagation(layer_id - 1)
+
+    def train_network(self, dataset, epochs, learning_rate, verbose=False):
+
+        dataset.add_bias_term()
+        assert(dataset.feature_vector_length() == len(self.neurons[0].weights))
+        self.learning_rate = learning_rate
+
+        #labels_header = ",".join(["prec. label " + str(key) for key in dataset.get_labels()])       
+        print("Training information\n")
+        #print(f'epoch, accuracy, {labels_header}')
+        print('epoch, MSE')
+
+        prev_mse = 0 #Aquí se guarda el mse de la epoch anterior
+
+        for current_epoch in range(epochs):
+
+            """error_number = 0
+            true_positives = {}
+            false_positives = {}
+
+            for key in dataset.get_labels():
+                true_positives[key] = 0
+                false_positives[key] = 0"""
+
+            sum_mse = 0 #Aquí se va acumulando el error para cada muestra
+
+            for features, expected_value in dataset: #Se itera sobre las muestras en el dataset
+
+                output_value = self.output(features) #Se produce el output dados los features (Utilizando la función lineal)
+
+                expected_vector = dataset.get_label_vector(expected_value)
+
+                error = sample_error(expected_vector, output_value) #Se calcula el error para la muestra
+
+                self.error_vector = expected_vector - output_value
+
+                self.backpropagation(self.depth - 1)
+
+                sum_mse += error #Actualizar error total
+
+            mse = sum_mse / dataset.size() #Calcular error promedio
+
+            print(f'{current_epoch}, {mse}')
+            if abs(prev_mse - mse) >= 0.000001: #Criterio de parada
+                prev_mse = mse 
+                dataset.shuffle_all() #Cambiar el orden en que se muestran los datos
+            else:
+                break
 

@@ -18,6 +18,7 @@ class Perceptron:
 
         self.weights = np.array([random.uniform(-0.05, 0.05) for i in range(input_dimension + 1)])
         self.activation_function = activation_function
+        self.localGradient = 0
 
     """ Suma pesada de los inputs:
         Parámetros:
@@ -35,6 +36,10 @@ class Perceptron:
     def output(self, inputs):
 
         return self.activation_function.output(self.sum_inputs(inputs))
+
+    def first_derivative_output(self, inputs):
+
+        return self.activation_function.first_derivative_output(self.sum_inputs(inputs))
 
     """ Permite ajustar los pesos del perceptron cuando hay un dato mal clasificado 
         Parámetros:
