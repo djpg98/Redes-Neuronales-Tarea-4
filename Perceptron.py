@@ -1,5 +1,4 @@
-
-from numpy.core.defchararray import multiply
+from collections import deque
 from metrics import accuracy, precision
 import numpy as np
 import random
@@ -19,6 +18,7 @@ class Perceptron:
         self.weights = np.array([random.uniform(-0.05, 0.05) for i in range(input_dimension + 1)])
         self.activation_function = activation_function
         self.localGradient = 0
+        self.history = np.array([deque([0 for i in range(10)], maxlen=10) for i in range(input_dimension + 1)])
 
     """ Suma pesada de los inputs:
         Parámetros:
@@ -40,6 +40,14 @@ class Perceptron:
     def first_derivative_output(self, inputs):
 
         return self.activation_function.first_derivative_output(self.sum_inputs(inputs))
+
+    def update_history(self, new_values):
+
+        for pair in zip(self.history, new_values):
+
+            pair[0].append(pair[1])
+
+
 
     """ Permite ajustar los pesos del perceptron cuando hay un dato mal clasificado 
         Parámetros:
