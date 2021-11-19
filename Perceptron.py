@@ -18,7 +18,7 @@ class Perceptron:
         self.weights = np.array([random.uniform(-0.05, 0.05) for i in range(input_dimension + 1)])
         self.activation_function = activation_function
         self.localGradient = 0
-        self.history = np.array([deque([0 for i in range(10)], maxlen=10) for i in range(input_dimension + 1)])
+        self.history = [deque([0 for i in range(3)], maxlen=3) for i in range(input_dimension + 1)]
 
     """ Suma pesada de los inputs:
         Parámetros:
@@ -46,6 +46,10 @@ class Perceptron:
         for pair in zip(self.history, new_values):
 
             pair[0].append(pair[1])
+
+    def momentum(self, alpha_vector):
+
+        return np.array([(alpha_vector * np.array(queue)).sum() for queue in self.history])
 
 
 

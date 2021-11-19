@@ -261,9 +261,11 @@ class MLP:
             self.setLocalGradient(layer_id, neuron_id)
             local_gradient = self.getLocalGradient(layer_id, neuron_id)
 
-            delta = self.learning_rate * local_gradient * layer_inputs
+            delta = local_gradient * layer_inputs
+            momentum = self.layers[layer_id].neurons[neuron_id].momentum(self.alpha_vector)
 
-            self.layers[layer_id].neurons[neuron_id].weights += delta
+            self.layers[layer_id].neurons[neuron_id].weights += (self.learning_rate * (delta + momentum))
+            self.layers[layer_id].neurons[neuron_id].update_history(delta)
 
         if layer_id != 0:
             self.backpropagation(layer_id - 1)
@@ -277,7 +279,7 @@ class MLP:
 
         if (alpha != 0):
 
-            self.alpha_vector = np.array([math.pow(alpha, i) for i in range(10)])
+            self.alpha_vector = np.array([math.pow(alpha, 3 - i) for i in range(3)])
 
         #labels_header = ",".join(["prec. label " + str(key) for key in dataset.get_labels()])       
         print("Training information\n")
@@ -307,8 +309,10 @@ class MLP:
                 error = sample_error(expected_vector, output_value) #Se calcula el error para la muestra
 
                 self.error_vector = expected_vector - output_value
-
-                self.backpropagation(self.depth - 1)
+                if alpha == 0:
+                    self.backpropagation(self.depth - 1)
+                else:
+                    self.backpropagation_with_momentum(self.depth - 1)
 
                 sum_mse += error #Actualizar error total
 
