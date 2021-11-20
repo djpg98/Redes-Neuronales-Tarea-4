@@ -1,7 +1,8 @@
 from Perceptron import Perceptron
 from metrics import precision, accuracy, sample_error
+import csv
 import numpy as np
-import math
+from utils import round_output
 
 """La clase Layer representa una capa de perceptrones. Esta muy sencilla implmentación asume
 que todos los perceptrones de la capa reciben exactamente el mismo input"""
@@ -235,7 +236,6 @@ class MLP:
 
         return self.layers[layer_id].neurons[neuron_id].localGradient
 
-    #Do not forget to set the error vector in training before that
     def backpropagation(self, layer_id):
 
         layer_inputs = self.layers[layer_id].last_input
@@ -262,41 +262,44 @@ class MLP:
             local_gradient = self.getLocalGradient(layer_id, neuron_id)
 
             delta = local_gradient * layer_inputs
-            momentum = self.layers[layer_id].neurons[neuron_id].momentum(self.alpha_vector)
+            momentum = self.layers[layer_id].neurons[neuron_id].momentum
 
             self.layers[layer_id].neurons[neuron_id].weights += (self.learning_rate * (delta + momentum))
-            self.layers[layer_id].neurons[neuron_id].update_history(delta)
+            self.layers[layer_id].neurons[neuron_id].update_momentum(self.alpha, delta)
 
         if layer_id != 0:
             self.backpropagation(layer_id - 1)
 
 
-    def train_network(self, dataset, epochs, learning_rate, alpha=0, verbose=False):
+    def train_network(self, dataset, epochs, learning_rate, alpha=0, verbose=False, save_error=""):
 
         dataset.add_bias_term()
         assert(dataset.feature_vector_length() == len(self.layers[0].neurons[0].weights))
         self.learning_rate = learning_rate
 
         if (alpha != 0):
+            
+            self.alpha = alpha
 
-            self.alpha_vector = np.array([math.pow(alpha, 3 - i) for i in range(3)])
-
-        #labels_header = ",".join(["prec. label " + str(key) for key in dataset.get_labels()])       
+        labels_header = ",".join(["prec. label " + str(key) for key in dataset.get_labels()])       
         print("Training information\n")
-        #print(f'epoch, accuracy, {labels_header}')
-        print('epoch, MSE')
+        print(f'epoch, accuracy, MSE, {labels_header}')
+        #print('epoch, MSE')
+
+        if save_error != "":
+            error_list =[['epoch', 'MSE']]
 
         prev_mse = 0 #Aquí se guarda el mse de la epoch anterior
 
         for current_epoch in range(epochs):
 
-            """error_number = 0
+            error_number = 0
             true_positives = {}
             false_positives = {}
 
             for key in dataset.get_labels():
                 true_positives[key] = 0
-                false_positives[key] = 0"""
+                false_positives[key] = 0
 
             sum_mse = 0 #Aquí se va acumulando el error para cada muestra
 
@@ -304,7 +307,17 @@ class MLP:
 
                 output_value = self.output(features) #Se produce el output dados los features (Utilizando la función lineal)
 
+                rounded_output = np.array([round_output(x) for x in output_value])
+
                 expected_vector = dataset.get_label_vector(expected_value)
+
+                if not all(rounded_output == expected_vector):
+                    error_number += 1
+
+                    if sum(rounded_output) == 1:
+                        false_positives[expected_value] += 1
+                else:
+                    true_positives[expected_value] += 1
 
                 error = sample_error(expected_vector, output_value) #Se calcula el error para la muestra
 
@@ -318,12 +331,30 @@ class MLP:
 
             mse = sum_mse / dataset.size() #Calcular error promedio
 
-            print(f'{current_epoch}, {mse}')
+            precision_list = []
+
+            for key in dataset.get_labels():
+                precision_list.append(round(precision(true_positives[key], false_positives[key]), 2))
+
+            precision_string = ",".join([str(value) for value in precision_list])
+            print(f'{current_epoch},{accuracy(dataset.size(), error_number)}, {mse}, {precision_string}')
+            if save_error != "":
+                error_list.append([f'{current_epoch}, {mse}'])
             if abs(prev_mse - mse) >= 0.000001: #Criterio de parada
                 prev_mse = mse 
                 dataset.shuffle_all() #Cambiar el orden en que se muestran los datos
             else:
                 break
+
+        if save_error != '': #Escribir en un archivo el error cometido en cada epoch
+
+            with open(save_error, 'w') as training_results:
+                writer = csv.writer(training_results)
+
+                for row in error_list:
+                    writer.writerow(row)
+
+                training_results.close()
 
     def eval(self, dataset):
 
@@ -331,18 +362,35 @@ class MLP:
         assert(dataset.feature_vector_length() == len(self.layers[0].neurons[0].weights))
 
 
-        #labels_header = ",".join(["prec. label " + str(key) for key in dataset.get_labels()])       
+        labels_header = ",".join(["prec. label " + str(key) for key in dataset.get_labels()])       
         print("Test information\n")
-        #print(f'epoch, accuracy, {labels_header}')
-        print('MSE')
+        print(f'accuracy, mse, {labels_header}')
 
         sum_mse = 0 #Aquí se va acumulando el error para cada muestra
+        error_number = 0
+        true_positives = {}
+        false_positives = {}
+
+        for key in dataset.get_labels():
+            true_positives[key] = 0
+            false_positives[key] = 0
 
         for features, expected_value in dataset: #Se itera sobre las muestras en el dataset
 
             output_value = self.output(features) #Se produce el output dados los features (Utilizando la función lineal)
 
+            rounded_output = np.array([round_output(x) for x in output_value])
+
             expected_vector = dataset.get_label_vector(expected_value)
+
+            if not all(rounded_output == expected_vector):
+                error_number += 1
+
+                if sum(rounded_output) == 1:
+                    false_positives[expected_value] += 1
+            else:
+                true_positives[expected_value] += 1
+
 
             error = sample_error(expected_vector, output_value) #Se calcula el error para la muestra
 
@@ -350,6 +398,12 @@ class MLP:
 
         mse = sum_mse / dataset.size() #Calcular error promedio
 
-        print(f'{mse}')
+        precision_list = []
+
+        for key in dataset.get_labels():
+            precision_list.append(round(precision(true_positives[key], false_positives[key]), 2))
+
+        precision_string = ",".join([str(value) for value in precision_list])
+        print(f'{accuracy(dataset.size(), error_number)}, {mse}, {precision_string}')
 
 
