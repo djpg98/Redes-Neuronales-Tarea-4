@@ -55,4 +55,3 @@ Test information
 
 accuracy, mse, prec. label 0,prec. label 1,prec. label 2,prec. label 3,prec. label 4,prec. label 5,prec. label 6,prec. label 7,prec. label 8,prec. label 9
 0.9255, 0.027318673247430512, 1.0,1.0,0.99,0.99,0.99,0.99,0.99,0.99,0.99,0.99
-(numpy) diego@diego-HP-ENVY-Notebook:~/Redes Neuronales Tarea 4$ 

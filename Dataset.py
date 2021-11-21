@@ -1,3 +1,5 @@
+from DatasetSampler import DatasetSampler
+
 import csv
 import random
 import numpy as np
@@ -31,9 +33,9 @@ class DatasetMixin:
 
     """ Devuelve la cantidad de elementos pertenecientes
         al conjunto de prueba del dataset """
-    def test_data_size(self):
+    def validation_data_size(self):
 
-        return len(self.test_data)
+        return len(self.validation_data)
 
     """ Devuelve el tamaño del input vector (Incluendo el término de bias si
         este ha sido agregado
@@ -61,9 +63,9 @@ class DatasetMixin:
     """ Iterador para el conjunto de datos de prueba
         del dataset
     """
-    def test_data_iter(self):
+    def validation_data_iter(self):
 
-        for index in self.test_data:
+        for index in self.validation_data:
 
             yield (self.features[index], self.values[index])
 
@@ -76,7 +78,7 @@ class DatasetMixin:
 """ Esta clase representa a los datasets donde solo existen dos categorías
     Una será representada con la etiqueta 1 (La llamada categoría positiva)
     y las demás con 0. La clase utiliza los atributos training_data y 
-    test_data para determinar los índices de los elementos de la lista que
+    validation_data para determinar los índices de los elementos de la lista que
     contiene el dataset que serán utilizados en los conjuntos de entrenamiento
     y de prueba. Nótese que shuffle_training_data no altera el orden de los
     elementos en el dataset, solo el de los índices en training_data
@@ -116,7 +118,7 @@ class BinaryDataset(DatasetMixin):
 
         index_list = [i for i in range(len(self.features))]
         self.training_data = random.sample(index_list, int(0.80 * len(self.features)))
-        self.test_data = [index for index in index_list if index not in self.training_data]
+        self.validation_data = [index for index in index_list if index not in self.training_data]
 
 """ Esta clase se utiliza para datasets de múltiples categorías.
     En la etiqueta se guarda el ínidce del perceptron en la lista de
@@ -133,11 +135,14 @@ class MultiClassDataset(DatasetMixin):
             índice del perceptrón encargado de reconocer la categoría
             con el label indicado
     """
-    def __init__(self, datafile, label_dictionary):
+    def __init__(self, datafile, label_dictionary, proportion=0):
 
         self.features = []
         self.values = []
         self.label_dictionary = label_dictionary
+
+        if proportion > 0:
+            data_sampler = DatasetSampler(self.label_dictionary.keys(), proportion)
 
         with open(datafile, 'r') as csv_file:
 
@@ -146,19 +151,27 @@ class MultiClassDataset(DatasetMixin):
             #SKip header
             next(data_reader)
 
+            counter = 0
+
             for row in data_reader:
 
                 features, value = row[1:], row[0]
 
                 self.features.append(np.array(list(map(float, features))))
                 self.values.append(value)
+                if proportion > 0:
+                    data_sampler.add_class_sample(value, counter)
+                counter += 1
 
             csv_file.close()
 
         self.index_list = [i for i in range(len(self.features))]
-        self.training_data = random.sample(self.index_list, int(0.80 * len(self.features)))
-        self.test_data = [index for index in self.index_list if index not in self.training_data]
-        self.shuffle_all()
+        if proportion > 0:
+            self.training_data = data_sampler.make_dataset_sample()
+        else:
+            self.training_data = random.sample(self.index_list, int(0.80 * len(self.features)))
+        self.validation_data = [index for index in self.index_list if index not in self.training_data]
+        self.shuffle_training_data()
 
     """ Utiliza una función para normalizar los datos
         - normalizer_function: Función utilizada para normalizar 

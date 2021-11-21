@@ -25,7 +25,7 @@ layer_1 = Layer(
 layer_list = [layer_0, layer_1]
 classifier = MLP(layer_list)
 
-dataset_train = MultiClassDataset('mnist_train.csv', dict([(str(i), i) for i in range(10)]))
+dataset_train = MultiClassDataset('mnist_train.csv', dict([(str(i), i) for i in range(10)]), 0.8)
 dataset_train.normalize_data(lambda x: x/255)
 
 classifier.train_network(dataset_train, 50, 0.1, 0.9, True, error_file_name)

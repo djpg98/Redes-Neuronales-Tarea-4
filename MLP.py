@@ -283,11 +283,12 @@ class MLP:
 
         labels_header = ",".join(["prec. label " + str(key) for key in dataset.get_labels()])       
         print("Training information\n")
-        print(f'epoch, accuracy, MSE, {labels_header}')
+        print(f'epoch, type, accuracy, MSE, {labels_header}')
         #print('epoch, MSE')
 
         if save_error != "":
-            error_list =[['epoch', 'MSE']]
+            error_train_list =[['epoch', 'MSE']]
+            error_val_list = [['epoch', 'MSE']]
 
         prev_mse = 0 #Aquí se guarda el mse de la epoch anterior
 
@@ -303,7 +304,7 @@ class MLP:
 
             sum_mse = 0 #Aquí se va acumulando el error para cada muestra
 
-            for features, expected_value in dataset: #Se itera sobre las muestras en el dataset
+            for features, expected_value in dataset.training_data_iter(): #Se itera sobre las muestras en el dataset
 
                 output_value = self.output(features) #Se produce el output dados los features (Utilizando la función lineal)
 
@@ -329,7 +330,7 @@ class MLP:
 
                 sum_mse += error #Actualizar error total
 
-            mse = sum_mse / dataset.size() #Calcular error promedio
+            mse = sum_mse / dataset.training_data_size() #Calcular error promedio
 
             precision_list = []
 
@@ -337,24 +338,83 @@ class MLP:
                 precision_list.append(round(precision(true_positives[key], false_positives[key]), 2))
 
             precision_string = ",".join([str(value) for value in precision_list])
-            print(f'{current_epoch},{accuracy(dataset.size(), error_number)}, {mse}, {precision_string}')
+            print(f'{current_epoch}, train, {accuracy(dataset.training_data_size(), error_number)}, {mse}, {precision_string}')
+
             if save_error != "":
-                error_list.append([f'{current_epoch}, {mse}'])
+                error_train_list.append([f'{current_epoch}, {mse}'])
+
+            self.validation(dataset, current_epoch, error_val_list)
+
             if abs(prev_mse - mse) >= 0.000001: #Criterio de parada
                 prev_mse = mse 
-                dataset.shuffle_all() #Cambiar el orden en que se muestran los datos
+                dataset.shuffle_training_data() #Cambiar el orden en que se muestran los datos
             else:
                 break
 
         if save_error != '': #Escribir en un archivo el error cometido en cada epoch
 
-            with open(save_error, 'w') as training_results:
+            with open(f'{save_error}_train.csv', 'w') as training_results:
                 writer = csv.writer(training_results)
 
-                for row in error_list:
+                for row in error_train_list:
                     writer.writerow(row)
 
                 training_results.close()
+
+            with open(f'{save_error}_val.csv', 'w') as validation_results:
+                writer = csv.writer(validation_results)
+
+                for row in error_val_list:
+                    writer.writerow(row)
+
+                validation_results.close()
+
+    def validation(self, dataset, current_epoch, error_val_list=[]):
+
+        sum_mse = 0 #Aquí se va acumulando el error para cada muestra
+        error_number = 0
+        true_positives = {}
+        false_positives = {}
+
+        for key in dataset.get_labels():
+            true_positives[key] = 0
+            false_positives[key] = 0
+
+        for features, expected_value in dataset.validation_data_iter(): #Se itera sobre las muestras en el dataset
+
+            output_value = self.output(features) #Se produce el output dados los features (Utilizando la función lineal)
+
+            rounded_output = np.array([round_output(x) for x in output_value])
+
+            expected_vector = dataset.get_label_vector(expected_value)
+
+            if not all(rounded_output == expected_vector):
+                error_number += 1
+
+                if sum(rounded_output) == 1:
+                    false_positives[expected_value] += 1
+            else:
+                true_positives[expected_value] += 1
+
+
+            error = sample_error(expected_vector, output_value) #Se calcula el error para la muestra
+
+            sum_mse += error #Actualizar error total
+
+        mse = sum_mse / dataset.validation_data_size() #Calcular error promedio
+
+        precision_list = []
+
+        if error_val_list != []:
+            error_val_list.append([f'{current_epoch}, {mse}'])
+
+        for key in dataset.get_labels():
+            precision_list.append(round(precision(true_positives[key], false_positives[key]), 2))
+
+        precision_string = ",".join([str(value) for value in precision_list])
+        print(f'{current_epoch}, val, {accuracy(dataset.validation_data_size(), error_number)}, {mse}, {precision_string}')
+
+
 
     def eval(self, dataset):
 
