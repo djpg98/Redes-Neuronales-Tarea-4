@@ -345,11 +345,9 @@ class MLP:
 
             self.validation(dataset, current_epoch, error_val_list)
 
-            if abs(prev_mse - mse) >= 0.000001: #Criterio de parada
-                prev_mse = mse 
-                dataset.shuffle_training_data() #Cambiar el orden en que se muestran los datos
-            else:
-                break
+            prev_mse = mse 
+            dataset.shuffle_training_data() #Cambiar el orden en que se muestran los datos
+
 
         if save_error != '': #Escribir en un archivo el error cometido en cada epoch
 
