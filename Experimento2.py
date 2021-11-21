@@ -7,7 +7,7 @@ import sys
 hidden_layer_dimension = int(sys.argv[1])
 output_layer_dimension = int(sys.argv[2])
 error_file_name = sys.argv[3]
-alpha = sys.argv[4]
+alpha = float(sys.argv[4])
 
 sigmoid = Sigmoid()
 #Hidden Layer
