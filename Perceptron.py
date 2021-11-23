@@ -37,10 +37,19 @@ class Perceptron:
 
         return self.activation_function.output(self.sum_inputs(inputs))
 
+    """ Aplica la primera derivada función de activación a la suma pesada 
+        de los inputs
+        Parámetros:
+            - inputs: Vector que actúa como input del perceptron
+    """
     def first_derivative_output(self, inputs):
 
         return self.activation_function.first_derivative_output(self.sum_inputs(inputs))
 
+    """ Actiualiza el momentum de la neurona (Utilizado en las MLP)
+        Parámetros:
+            - delta: Nuevo término a incluir en la suma que define el momentum
+    """
     def update_momentum(self, alpha, delta):
 
         self.momentum = alpha * (self.momentum + delta)

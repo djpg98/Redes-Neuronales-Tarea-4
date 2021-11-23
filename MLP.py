@@ -41,6 +41,14 @@ class Layer:
 
         return np.array([perceptron.output(input_vector) for perceptron in self.neurons])
 
+    """
+        Esta función se utiliza para el cálculo del gradiente local de una neurona que no está en la
+        última capa de la MLP. Este método en particular calcula la parte de la sumatoria de
+        gradientes por pesos
+        Parámetros:
+            - neuron_id: Identificador de la neurona en su respectiva capa (Índice dentro de la lista
+            de neuronas)
+    """
     def weighted_gradient_sum(self, neuron_id):
 
         return sum([neuron.localGradient * neuron.weights[neuron_id + 1] for neuron in self.neurons])
@@ -222,6 +230,13 @@ class MLP:
 
         return next_layer_input
 
+    """ Calcula el gradiente local para una neurona específica
+        Parámetros:
+            - layer_id: Identificador de la capa donde está la neurona cuyo gradiente local se desea
+            calcular
+            - neuron_id: Identificador dentro de la capa de la neurona cuyo gradiente local se desea
+            calcular
+    """
     def setLocalGradient(self, layer_id, neuron_id):
 
         neuron_input = self.layers[layer_id].last_input
@@ -232,45 +247,73 @@ class MLP:
             sum_next_layer = self.layers[layer_id + 1].weighted_gradient_sum(neuron_id)  
             self.layers[layer_id].neurons[neuron_id].localGradient = self.layers[layer_id].neurons[neuron_id].first_derivative_output(neuron_input) * sum_next_layer
 
+    """ Retorna el gradiente local de una neurona específica
+        Parámetros:
+            - layer_id: Identificador de la capa donde está la neurona cuyo gradiente local se desea
+            calcular
+            - neuron_id: Identificador dentro de la capa de la neurona cuyo gradiente local se desea
+            calcular
+    """
     def getLocalGradient(self, layer_id, neuron_id):
 
         return self.layers[layer_id].neurons[neuron_id].localGradient
 
+    """ Algoritmo de backpropagation (Sin momentum) para una MLP (Fully connected y con sesgo)
+        Parámetros:
+            - layer_id: Capa cuyos pesos se ajustan en esta llamada a backpropagation
+    """
     def backpropagation(self, layer_id):
 
-        layer_inputs = self.layers[layer_id].last_input
+        layer_inputs = self.layers[layer_id].last_input #último input que recibió la capa
 
-        for neuron_id in range(self.layers[layer_id].dimension):
+        for neuron_id in range(self.layers[layer_id].dimension): #Para cada neurona en la capa
 
-            self.setLocalGradient(layer_id, neuron_id)
+            self.setLocalGradient(layer_id, neuron_id) #Se calcula el gradiente local
             local_gradient = self.getLocalGradient(layer_id, neuron_id)
 
-            delta = self.learning_rate * local_gradient * layer_inputs
+            delta = self.learning_rate * local_gradient * layer_inputs #Se calcula el delta de los pesos
 
-            self.layers[layer_id].neurons[neuron_id].weights += delta
+            self.layers[layer_id].neurons[neuron_id].weights += delta #Se ajustan los pesos
 
-        if layer_id != 0:
+        if layer_id != 0: #Si esta no es la primera capa, el algoritmo continúa en la capa anterior
             self.backpropagation(layer_id - 1)
 
+    """ Algoritmo de backpropagation con momentum para una MLP (Fully connected y con sesgo)
+        Parámetros:
+            - layer_id: Capa cuyos pesos se ajustan en esta llamada a backpropagation
+    """
     def backpropagation_with_momentum(self, layer_id):
 
-        layer_inputs = self.layers[layer_id].last_input
+        layer_inputs = self.layers[layer_id].last_input #último input que recibió la capa
 
-        for neuron_id in range(self.layers[layer_id].dimension):
+        for neuron_id in range(self.layers[layer_id].dimension): #Para cada neurona en la capa
 
-            self.setLocalGradient(layer_id, neuron_id)
+            self.setLocalGradient(layer_id, neuron_id) #Se calcula el gradiente local
             local_gradient = self.getLocalGradient(layer_id, neuron_id)
 
-            delta = local_gradient * layer_inputs
-            momentum = self.layers[layer_id].neurons[neuron_id].momentum
+            delta = local_gradient * layer_inputs #Se calcula el delta de los pesos (Sin multiplicar por la tasa de aprendizaje)
+            momentum = self.layers[layer_id].neurons[neuron_id].momentum #Se obtiene el momentum en esta iteración
 
-            self.layers[layer_id].neurons[neuron_id].weights += (self.learning_rate * (delta + momentum))
-            self.layers[layer_id].neurons[neuron_id].update_momentum(self.alpha, delta)
+            self.layers[layer_id].neurons[neuron_id].weights += (self.learning_rate * (delta + momentum)) #Se actualizan los pesos
+            self.layers[layer_id].neurons[neuron_id].update_momentum(self.alpha, delta) #Se actualiza el momentum
 
-        if layer_id != 0:
+        if layer_id != 0: #Si esta no es la primera capa, el algoritmo continúa en la capa anterior
             self.backpropagation(layer_id - 1)
 
-
+    """ Entrena una capa una MLP para clasificar un dataset
+        Parámetros:
+            - dataset: Una clase que hereda el mixin DatasetMixin (En esta tarea
+              existen dos: BinaryDataset y MultiClassDataset) que carga un dataset
+              de un archivo csv y permite realizar ciertas operaciones sobre el
+              mismo
+            - epochs: Número máximo de epochs durante el entrenamiento
+            - learning_rate: Tasa de aprendizaje
+            - alpha (Opcional): Factor de escalamiento del momentum
+            - verbose: Si se desea imprimir información de los errores en cada epoch/pesos finales
+            - save_weights: Nombre del archivo donde se guardaran los pesos. Si el nombre es el 
+              string vacío no se salvan los pesos (Esta parte no está funcionando porque no he
+              implementado save_weights aquí)
+    """
     def train_network(self, dataset, epochs, learning_rate, alpha=0, verbose=False, save_error=""):
 
         dataset.add_bias_term()
@@ -308,7 +351,7 @@ class MLP:
 
                 output_value = self.output(features) #Se produce el output dados los features (Utilizando la función lineal)
 
-                rounded_output = np.array([round_output(x) for x in output_value])
+                rounded_output = np.array([round_output(x) for x in output_value]) #Se redondean x > 0.9 como 1 y x < 0.1 como  0 para hacer la predicción
 
                 expected_vector = dataset.get_label_vector(expected_value)
 
@@ -343,6 +386,7 @@ class MLP:
             if save_error != "":
                 error_train_list.append([f'{current_epoch}, {mse}'])
 
+            #Se aplica la validación luego del epoch
             self.validation(dataset, current_epoch, error_val_list)
 
             prev_mse = mse 
@@ -367,6 +411,17 @@ class MLP:
 
                 validation_results.close()
 
+    """ Devuelve la precision, el mse y la accuracy para un dataset test. La única diferencia con
+        eval es que este no añade sesgo al dataset (Se supone que ya viene incluido) y que registra
+        el MSE en una lista. Se corre sobre una partición del dataset de entrenamiento
+        Parámetros:
+            - Dataset: Instancia de una clase que hereda el mixin DatasetMixin (En esta tarea
+              existen dos: BinaryDataset y MultiClassDataset) que carga un dataset
+              de un archivo csv y permite realizar ciertas operaciones sobre el
+              mismo
+            - current_epoch: Epoch después de la cual se está ejecutando la validación
+            - error_val_list: Donde se guardan el MSE de cada llamada a validación
+    """
     def validation(self, dataset, current_epoch, error_val_list=[]):
 
         sum_mse = 0 #Aquí se va acumulando el error para cada muestra
@@ -414,6 +469,13 @@ class MLP:
 
 
 
+    """ Devuelve la precision y la accuracy para un dataset test
+        Parámetros:
+            - Dataset: Instancia de una clase que hereda el mixin DatasetMixin (En esta tarea
+              existen dos: BinaryDataset y MultiClassDataset) que carga un dataset
+              de un archivo csv y permite realizar ciertas operaciones sobre el
+              mismo
+    """
     def eval(self, dataset):
 
         dataset.add_bias_term()

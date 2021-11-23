@@ -32,7 +32,7 @@ class DatasetMixin:
         return len(self.training_data)
 
     """ Devuelve la cantidad de elementos pertenecientes
-        al conjunto de prueba del dataset """
+        al conjunto de validación del dataset """
     def validation_data_size(self):
 
         return len(self.validation_data)
@@ -60,7 +60,7 @@ class DatasetMixin:
 
             yield (self.features[index], self.values[index])
 
-    """ Iterador para el conjunto de datos de prueba
+    """ Iterador para el conjunto de datos de validación
         del dataset
     """
     def validation_data_iter(self):
@@ -80,7 +80,7 @@ class DatasetMixin:
     y las demás con 0. La clase utiliza los atributos training_data y 
     validation_data para determinar los índices de los elementos de la lista que
     contiene el dataset que serán utilizados en los conjuntos de entrenamiento
-    y de prueba. Nótese que shuffle_training_data no altera el orden de los
+    y de validación. Nótese que shuffle_training_data no altera el orden de los
     elementos en el dataset, solo el de los índices en training_data
 """
 class BinaryDataset(DatasetMixin):
@@ -147,13 +147,16 @@ class MultiClassDataset(DatasetMixin):
         with open(datafile, 'r') as csv_file:
 
             data_reader = csv.reader(csv_file, delimiter=",")
-            
-            #SKip header
-            next(data_reader)
 
             counter = 0
+            header_saved = False
 
             for row in data_reader:
+
+                if not header_saved:
+                    self.header = row
+                    header_saved = True
+                    continue
 
                 features, value = row[1:], row[0]
 
@@ -194,6 +197,10 @@ class MultiClassDataset(DatasetMixin):
         for key in self.label_dictionary.keys():
             yield key
 
+    """ Vector de 0 y 1 que representa una determinada clase
+        Parámetros:
+            - Label: Nombre de la clase
+    """
     def get_label_vector(self,label):
         vector = [0 for i in range(len(self.label_dictionary))]
         vector[self.get_label_index(label)] = 1
@@ -210,3 +217,21 @@ class MultiClassDataset(DatasetMixin):
 
         for index in self.index_list:
             yield (self.features[index], self.values[index])
+
+    """ Escribe el conjunto de entrenamiento en un archivo csv
+        Parámetros:
+            - outfile: Nombre del archivo de salida. Debe incluir la extensión csv
+    """
+    def training_to_csv(self, outfile):
+
+        with open(outfile, 'w') as new_dataset:
+            writer = csv.writer(new_dataset)
+            writer.writerow(self.header)
+            for feature, label in self.training_data_iter():
+                writer.writerow(np.concatenate((np.array([label]),feature)))
+
+            new_dataset.close()
+        
+        print("Se ha creado el nuevo dataset exitosamente")
+
+
