@@ -27,7 +27,7 @@ class ActivationFunction(ABC):
 """ Implementación de la función logística siguiendo las especificaciones
     de la clase abstracta ActivationFunction
 """
-class Sigmoid(ActivationFunction):
+class Logistic(ActivationFunction):
 
     """ Contructor de la función
         Parámetros:

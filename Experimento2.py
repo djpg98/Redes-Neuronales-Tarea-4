@@ -1,26 +1,30 @@
 from MLP import Layer, MLP
 from Dataset import MultiClassDataset
-from ActivationFunction import Sigmoid
+from ActivationFunction import Logistic
 
 import sys
 
+#Primer argumento: Dimensión capa oculta
 hidden_layer_dimension = int(sys.argv[1])
+#Segundo argumento: Dimensión del output
 output_layer_dimension = int(sys.argv[2])
+#Tercer argumento: Nombre del archivo de error (Sin extensión)
 error_file_name = sys.argv[3]
+#Cuarto argumento: Valor del parámetro alpha
 alpha = float(sys.argv[4])
 
-sigmoid = Sigmoid()
+logistic = Logistic()
 #Hidden Layer
 layer_0 = Layer(
     dimension=hidden_layer_dimension,
     input_dimension=784,
-    activation_function=sigmoid
+    activation_function=logistic
 )
 
 layer_1 = Layer(
     dimension=output_layer_dimension,
     input_dimension=hidden_layer_dimension,
-    activation_function=sigmoid
+    activation_function=logistic
 )
 
 layer_list = [layer_0, layer_1]
